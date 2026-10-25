@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Customized mail preview</h3>
+<p>File: <strong>{{ filename }}</strong> — click a recipient to see the email that person will get.</p>
+
+{% if attachments %}
+  <p>Attachments ({{ attachments|length }}):
+    {% for item in attachments %}
+      <span class="badge text-bg-light border">{{ item.name }}</span>
+    {% endfor %}
+  </p>
+{% endif %}
+
+{% if merge_fields %}
+  <p class="text-muted">Excel fields available in this file:
+    {% for field in merge_fields %}
+      <code class="me-1">{{ '{{' }}{{ field }}{{ '}}' }}</code>
+    {% endfor %}
+  </p>
+{% endif %}
+
+{% if deliverability %}
+  <div class="mb-3">
+    {% for item in deliverability %}
+      <div class="alert alert-{{ item.level }} mb-2">{{ item.text }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="row">
+  <div class="col-md-5">
+    <h5>Recipients</h5>
+    {% if preview %}
+      <div class="list-group mb-3" id="recipient-list">
+        {% for person in preview %}
+          <button type="button"
+                  class="list-group-item list-group-item-action recipient-btn {% if loop.first %}active{% endif %}"
+                  data-index="{{ loop.index0 }}">
+            <div class="fw-semibold">{{ person.name or 'Mentor' }}</div>
+            <div class="small">{{ person.email }}</div>
+          </button>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted">No recipients found in the uploaded file.</p>
+    {% endif %}
+  </div>
+  <div class="col-md-7">
+    <h5>How it will look in the inbox</h5>
+    <div class="border rounded overflow-hidden mb-3">
+      <div class="bg-light p-3 border-bottom">
+        <div><strong>From:</strong> {{ config.SENDER_NAME }} &lt;{{ from_email }}&gt;</div>
+        <div><strong>To:</strong> <span id="preview-to">{{ preview[0].email if preview else '' }}</span></div>
+        <div><strong>Subject:</strong> <span id="preview-subject">{{ preview[0].subject if preview else config.SUBJECT }}</span></div>
+      </div>
+      <div class="p-0 bg-white" id="preview-html">
+        {{ html_body|safe }}
+      </div>
+    </div>
+    <details>
+      <summary class="text-muted">Plain-text copy (spam filters read this too)</summary>
+      <pre id="preview-plain" class="mt-2 p-3 bg-light border rounded" style="white-space: pre-wrap;">{{ plain_body }}</pre>
+    </details>
+  </div>
+</div>
+
+<div class="mt-4">
+  <a href="{{ url_for('index') }}" class="btn btn-secondary">Back</a>
+</div>
+
+<script>
+const people = {{ preview|tojson }};
+document.querySelectorAll('.recipient-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.recipient-btn').forEach(function(other) { other.classList.remove('active'); });
+    btn.classList.add('active');
+    const person = people[Number(btn.dataset.index)];
+    if (!person) return;
+    document.getElementById('preview-to').textContent = person.email || '';
+    document.getElementById('preview-subject').textContent = person.subject || '';
+    document.getElementById('preview-html').innerHTML = person.html || '';
+    document.getElementById('preview-plain').textContent = person.plain || '';
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{
+  "SMTP_HOST": "smtp.hostinger.com",
+  "SMTP_PORT": 465,
+  "EMAIL_USER": "founder@mulsetu.com",
+  "EMAIL_PASS": "",
+  "FROM_EMAIL": "founder@mulsetu.com",
+  "SENDER_NAME": "Sarvesh Gadkari",
+  "REPLY_TO": "founder@mulsetu.com",
+  "DELAY_SECONDS": 60,
+  "SUBJECT": "",
+  "EMAIL_BODY": "",
+  "SEND_AS_HTML": true,
+  "ATTACHMENTS": []
+}

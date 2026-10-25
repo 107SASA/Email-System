@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .editor-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 8px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+  }
+  .editor-toolbar button {
+    padding: 5px 10px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .editor-toolbar button:hover {
+    background: #e9ecef;
+  }
+  #editor {
+    width: 100%;
+    min-height: 300px;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 4px 4px;
+    overflow-y: auto;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  #editor:empty:before {
+    content: attr(data-placeholder);
+    color: #6c757d;
+  }
+  .attach-thumb {
+    max-height: 72px;
+    max-width: 120px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+  }
+</style>
+
+<h3>Configuration & Message</h3>
+
+{% if deliverability %}
+  <div class="mb-4">
+    <h5>Inbox / spam check</h5>
+    {% for item in deliverability %}
+      <div class="alert alert-{{ item.level }} mb-2">{{ item.text }}</div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-success">No obvious spam risks in the current settings. Still send a test email and check Spam/Junk before bulk sending.</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+  <div class="row">
+    <div class="col-md-6">
+      <h5>SMTP Settings</h5>
+      <div class="mb-2">
+        <label class="form-label">SMTP Host</label>
+        <input name="smtp_host" class="form-control" value="{{ config.SMTP_HOST }}">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">SMTP Port</label>
+        <input name="smtp_port" class="form-control" value="{{ config.SMTP_PORT }}">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Login Email</label>
+        <input name="email_user" id="email_user" class="form-control" value="{{ config.EMAIL_USER }}">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Password (leave blank to keep saved)</label>
+        <input name="email_pass" type="password" class="form-control">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">From Email (must match login)</label>
+        <input name="from_email" id="from_email" class="form-control" value="{{ config.FROM_EMAIL }}">
+        <div class="form-text">Using a different From address than the login mailbox is a common reason mail goes to spam.</div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Sender Name</label>
+        <input name="sender_name" class="form-control" value="{{ config.SENDER_NAME }}">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Reply-To</label>
+        <input name="reply_to" class="form-control" value="{{ config.REPLY_TO }}">
+        <div class="form-text">Replies go here. Keep this the same as From unless you want replies somewhere else.</div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Delay seconds between sends</label>
+        <input name="delay_seconds" class="form-control" value="{{ config.DELAY_SECONDS }}">
+        <div class="form-text">Keep 60 or higher so Hostinger and Gmail do not treat this as a burst.</div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <h5>Message</h5>
+      <div class="mb-2">
+        <label class="form-label">Subject</label>
+        <input name="subject" class="form-control" value="{{ config.SUBJECT }}" placeholder="Email subject">
+        <div class="form-text">Avoid words like "Verify your account" — that looks like phishing.</div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Body (Rich Text Editor)</label>
+        <div class="editor-toolbar">
+          <button type="button" onclick="execCmd('bold')">Bold</button>
+          <button type="button" onclick="execCmd('italic')">Italic</button>
+          <button type="button" onclick="execCmd('underline')">Underline</button>
+          <button type="button" onclick="execCmd('strikethrough')">Strike</button>
+          <button type="button" onclick="execCmd('insertUnorderedList')">• List</button>
+          <button type="button" onclick="addLink()">Link</button>
+          <button type="button" onclick="clearFormat()">Clear</button>
+        </div>
+        <div id="editor" contenteditable="true" data-placeholder="Write your email here. Leave empty until you are ready.">{{ editor_body|safe }}</div>
+        <input type="hidden" id="email_body" name="email_body">
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" name="send_as_html" id="send_as_html" {% if config.SEND_AS_HTML %}checked{% endif %}>
+          <label class="form-check-label" for="send_as_html">Send as HTML (clickable links, formatting). A plain-text copy is always included too.</label>
+        </div>
+        <div class="mt-2">
+          <div class="form-text mb-1">Insert a field — each recipient gets their own value from Excel:</div>
+          <div class="d-flex flex-wrap gap-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertField('first_name')">First name</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertField('name')">Full name</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertField('email')">Email</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertField('organization')">Organization</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertField('custom_message')">Personal note</button>
+          </div>
+        </div>
+      </div>
+
+      <h5>Images &amp; attachments</h5>
+      <div class="mb-3">
+        <input type="file" name="attachments" class="form-control" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.bmp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip,.ppt,.pptx">
+        <div class="form-text">Add images, PDFs, or other files. Images can be inserted into the message. Max 10 MB each.</div>
+        {% if attachments %}
+          <div class="list-group mt-2">
+            {% for item in attachments %}
+              <div class="list-group-item">
+                <div class="d-flex align-items-center gap-3">
+                  {% if item.is_image %}
+                    <img src="{{ url_for('attachment_file', filename=item.name) }}" alt="" class="attach-thumb">
+                  {% endif %}
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">{{ item.name }}</div>
+                    <div class="small text-muted">{{ item.size_kb }} KB</div>
+                  </div>
+                  {% if item.is_image %}
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="insertImage('{{ item.name }}')">Insert in message</button>
+                  {% endif %}
+                  <button type="submit" name="remove_attachment" value="{{ item.name }}" class="btn btn-sm btn-outline-danger">Remove</button>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <h5>Excel (recipients)</h5>
+      <div class="mb-2">
+        <input type="file" name="excel_file" accept=".xls,.xlsx" class="form-control">
+        <div class="form-text">Required: an <strong>email</strong> column. Optional: <strong>name</strong>, <strong>organization</strong>, <strong>custom_message</strong>, or any other column. Use the same heading as <code>{{ '{{column}}' }}</code> in the subject or body.</div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <button name="action" value="save" class="btn btn-outline-secondary">Save settings</button>
+        <button name="action" value="test" class="btn btn-outline-primary">Send test to my login email</button>
+        <button name="action" value="preview" class="btn btn-secondary">Preview Recipients</button>
+        <button name="action" value="send" class="btn btn-primary">Start Sending (background)</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+<hr>
+<p class="text-muted mb-1">Each person gets their own email. Example: write <code>Dear {{ '{{first_name}}' }},</code> and Priya / Amit / Sara each see their own name. For a unique paragraph per person, add a <strong>custom_message</strong> column in Excel.</p>
+<p class="text-muted mb-1">The app sends one message at a time and logs progress to <strong>send.log</strong>.</p>
+<p class="text-muted">Before bulk sending: send a test, open Gmail/Outlook, and if it is in Spam mark <strong>Not spam</strong>. Also set SPF/DKIM/DMARC for your domain in Hostinger DNS.</p>
+
+<script>
+function execCmd(cmd) {
+  document.execCommand(cmd, false, null);
+  document.getElementById('editor').focus();
+}
+
+function insertField(name) {
+  document.getElementById('editor').focus();
+  document.execCommand('insertText', false, '{{' + name + '}}');
+}
+
+function insertImage(name) {
+  document.getElementById('editor').focus();
+  document.execCommand(
+    'insertHTML',
+    false,
+    '<img src="/attachments/' + name + '" alt="" style="max-width:100%;height:auto;">'
+  );
+}
+
+function addLink() {
+  let url = prompt('Enter the full URL, including https://');
+  if (url) {
+    document.execCommand('createLink', false, url);
+  }
+  document.getElementById('editor').focus();
+}
+
+function clearFormat() {
+  if (confirm('Clear all formatting?')) {
+    document.getElementById('editor').innerHTML = document.getElementById('editor').innerText;
+  }
+}
+
+document.getElementById('email_user').addEventListener('blur', function() {
+  var fromField = document.getElementById('from_email');
+  if (!fromField.value || fromField.value.indexOf('yourdomain.com') !== -1) {
+    fromField.value = this.value;
+  }
+});
+
+document.querySelector('form').addEventListener('submit', function() {
+  document.getElementById('email_body').value = document.getElementById('editor').innerHTML;
+});
+</script>
+{% endblock %}

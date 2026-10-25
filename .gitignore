@@ -1,0 +1,25 @@
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Local secrets and runtime data
+.env
+config.json
+send.log
+uploads/*
+!uploads/.gitkeep
+attachments/*
+!attachments/.gitkeep
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
